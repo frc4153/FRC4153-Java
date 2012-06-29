@@ -21,13 +21,13 @@ import edu.wpi.first.wpilibj.can.CANTimeoutException;
  */
 public class Oppie extends SimpleRobot {
 
-    public static final int LEFT_FRONT_MOTOR = -1;
-    public static final int LEFT_REAR_MOTOR = -1;
-    public static final int RIGHT_FRONT_MOTOR = -1;
-    public static final int RIGHT_REAR_MOTOR = -1;
+    public static final int LEFT_FRONT_MOTOR = 2;
+    public static final int LEFT_REAR_MOTOR = 6;
+    public static final int RIGHT_FRONT_MOTOR = 4;
+    public static final int RIGHT_REAR_MOTOR = 8;
     public static final int LEFT_JOYSTICK = 1;
     public static final int RIGHT_JOYSTICK = 2;
-    public static final int MANIPULATOR_JOYSTICK = 2;
+    public static final int MANIPULATOR_JOYSTICK = 3;
     RobotDrive drive = new RobotDrive(LEFT_FRONT_MOTOR, LEFT_REAR_MOTOR, RIGHT_FRONT_MOTOR, RIGHT_REAR_MOTOR);
     Joystick leftStick = new Joystick(LEFT_JOYSTICK);
     Joystick rightStick = new Joystick(RIGHT_JOYSTICK);
@@ -56,7 +56,7 @@ public class Oppie extends SimpleRobot {
                 //drive.tankDrive(leftStick, rightStick);  // no driving yet.
                 StateModel.getStateModel().runRoller(manipulatorStick.getRawButton(3));
                 StateModel.getStateModel().runBelt(manipulatorStick.getRawButton(4));
-                StateModel.getStateModel().runFeed(manipulatorStick.getRawButton(5));
+                StateModel.getStateModel().runMetering(manipulatorStick.getRawButton(5));
                 StateModel.getStateModel().shoot(manipulatorStick.getRawButton(1));
                 Timer.delay(0.005);
             } catch (CANTimeoutException ex) {

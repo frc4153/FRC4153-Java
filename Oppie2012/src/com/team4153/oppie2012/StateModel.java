@@ -17,6 +17,7 @@ package com.team4153.oppie2012;
 
 import edu.wpi.first.wpilibj.CANJaguar;
 import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj.Relay;
 import edu.wpi.first.wpilibj.can.CANTimeoutException;
 
 /**
@@ -25,13 +26,13 @@ import edu.wpi.first.wpilibj.can.CANTimeoutException;
  */
 public class StateModel {
 
-    public static final int SHOOT_MOTOR_CAN_ADDRESS = -1;
-    public static final int FEED_DRIVE_CAN_ADDRESS = -1;
-    public static final int BELD_DRIVE_CAN_ADDRESS = -1;
-    public static final int ROLLER_DRIVE_CAN_ADDRESS = -1;
-    public static final int TOP_PHOTOEYE_CHANNEL = -1;
-    public static final int MIDDLE_SWITCH_CHANNEL = -1;
-    public static final int BOTTOM_PHOTOEYE_CHANNEL = -1;
+    public static final int SHOOT_MOTOR_CAN_ADDRESS = 7;
+    public static final int METERING_DRIVE_RELAY_ADDRESS = 1;
+    public static final int BELD_DRIVE_CAN_ADDRESS = 3;
+    public static final int ROLLER_DRIVE_RELAY_ADDRESS = 2;
+    public static final int TOP_PHOTOEYE_CHANNEL = 6;
+    public static final int MIDDLE_SWITCH_CHANNEL = 7;
+    public static final int BOTTOM_PHOTOEYE_CHANNEL = 8;
 
     static class FutureStates {
 
@@ -47,7 +48,7 @@ public class StateModel {
         /**
          * True to run the feed to cause a transition out of this state.
          */
-        boolean feed;
+        boolean metering;
 
         /**
          * Constructor.
@@ -59,12 +60,15 @@ public class StateModel {
          * @param three one of the possible transitions, express as an index
          * into the FutureStates array
          */
-        public FutureStates(int one, int two, int three, boolean roller, boolean belt, boolean feed) {
+        public FutureStates(int one, int two, int three, boolean roller, boolean belt, boolean metering) {
             futureState = new int[3];
             futureState[0] = one;
             futureState[1] = two;
             futureState[2] = three;
             // transitions.
+            this.roller = roller;
+            this.belt = belt;
+            this.metering = metering;
         }
     }
     /**
@@ -76,7 +80,7 @@ public class StateModel {
      * position. The top photoeye is here and can detect balls that are in the
      * waiting to shoot position.
      */
-    protected CANJaguar feedDrive;
+    protected Relay meteringDrive;
     /**
      * The drive for the belt.
      */
@@ -84,7 +88,7 @@ public class StateModel {
     /**
      * The drive for the roller.
      */
-    protected CANJaguar rollerDrive;
+    protected Relay rollerDrive;
     /**
      * The bottom switch input.
      */
@@ -126,10 +130,10 @@ public class StateModel {
      */
     protected StateModel() {
         try {
-            shootMotor = new CANJaguar(SHOOT_MOTOR_CAN_ADDRESS);
-            feedDrive = new CANJaguar(FEED_DRIVE_CAN_ADDRESS);
+            shootDrive = new CANJaguar(SHOOT_MOTOR_CAN_ADDRESS);
+            meteringDrive = new Relay(METERING_DRIVE_RELAY_ADDRESS);
             beltDrive = new CANJaguar(BELD_DRIVE_CAN_ADDRESS);
-            rollerDrive = new CANJaguar(ROLLER_DRIVE_CAN_ADDRESS);
+            rollerDrive = new Relay(ROLLER_DRIVE_RELAY_ADDRESS);
         } catch (CANTimeoutException ex) {
             ex.printStackTrace();
         }
@@ -179,7 +183,7 @@ public class StateModel {
                 FutureStates current = futureStates[currentState];
                 runRoller(current.roller);
                 runBelt(current.roller);
-                runFeed(current.roller);
+                runMetering(current.roller);
             } catch (CANTimeoutException ex) {
                 ex.printStackTrace();
             }
@@ -189,9 +193,9 @@ public class StateModel {
 
     public void runRoller(boolean roller) throws CANTimeoutException {
         if (roller) {
-            rollerDrive.setX(0.1);
+            rollerDrive.set(Relay.Value.kForward);
         } else {
-            rollerDrive.setX(0);
+            rollerDrive.set(Relay.Value.kOff);
         }
     }
 
@@ -203,11 +207,11 @@ public class StateModel {
         }
     }
 
-    public void runFeed(boolean feed) throws CANTimeoutException {
-        if (feed) {
-            feedDrive.setX(0.1);
+    public void runMetering(boolean metering) throws CANTimeoutException {
+        if (metering) {
+            meteringDrive.set(Relay.Value.kForward);
         } else {
-            feedDrive.setX(0);
+            meteringDrive.set(Relay.Value.kOff);
         }
     }
 
@@ -227,7 +231,7 @@ public class StateModel {
             lastState = 0;
             runRoller(false);
             runBelt(false);
-            runFeed(false);
+            runMetering(false);
         } catch (CANTimeoutException ex) {
             ex.printStackTrace();
         }
