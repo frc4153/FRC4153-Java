@@ -3,14 +3,14 @@
  * Eight Possible States based on Three Sensors
  * 
  *  #     Bottom  Middle  Top     Transition                Possible States
- *  (0)      0       0       0       Run Roller                 1,7
- *  (1)      0       0       1       Run Roller & Shoot         0,4,1
- *  (2)      0       1       0       Run Roller & Belt & Feed   7,4,3
- *  (3)      0       1       1       Run Roller & Shoot         6,2,4
- *  (4)      1       0       0       Run Roller & Belt          2,7
- *  (5)      1       0       1       Run Belt & Shoot           5,6,7
- *  (6)      1       1       0       Run Belt & Feed            6,5
- *  (7)      1       1       1       Shoot                      7,5,6
+ *  (0)      0       0       0       Run Roller                 4
+ *  (1)      0       0       1       Run Roller & Shoot         0,5
+ *  (2)      0       1       0       Run Roller & Belt & Feed   1,6
+ *  (3)      0       1       1       Run Roller & Shoot         7,2
+ *  (4)      1       0       0       Run Roller & Belt          2,6
+ *  (5)      1       0       1       Run Belt & Shoot           3,7
+ *  (6)      1       1       0       Run Belt & Feed            3,7
+ *  (7)      1       1       1       Shoot                      6
  *   
  */
 package com.team4153.oppie2012;
@@ -30,9 +30,9 @@ public class StateModel {
     public static final int METERING_DRIVE_RELAY_ADDRESS = 1;
     public static final int BELD_DRIVE_CAN_ADDRESS = 3;
     public static final int ROLLER_DRIVE_RELAY_ADDRESS = 2;
-    public static final int TOP_PHOTOEYE_CHANNEL = 6;
-    public static final int MIDDLE_SWITCH_CHANNEL = 7;
-    public static final int BOTTOM_PHOTOEYE_CHANNEL = 8;
+    public static final int TOP_PHOTOEYE_CHANNEL = 8;
+    public static final int MIDDLE_SWITCH_CHANNEL = 9;
+    public static final int BOTTOM_PHOTOEYE_CHANNEL = 7;   //8;
 
     static class FutureStates {
 
@@ -69,6 +69,23 @@ public class StateModel {
             this.roller = roller;
             this.belt = belt;
             this.metering = metering;
+        }
+
+        public String toString() {
+            StringBuffer sb = new StringBuffer();
+            for (int counter = 0; counter < 3; counter++) {
+                sb.append("State ");
+                sb.append(counter);
+                sb.append(" ");
+                sb.append(futureState[counter]);
+            }
+            sb.append(" action r ");
+            sb.append(roller);
+            sb.append(" b ");
+            sb.append(belt);
+            sb.append(" m ");
+            sb.append(metering);
+            return (sb.toString());
         }
     }
     /**
@@ -130,11 +147,13 @@ public class StateModel {
      */
     protected StateModel() {
         try {
-            shootDrive = new CANJaguar(SHOOT_MOTOR_CAN_ADDRESS);
             meteringDrive = new Relay(METERING_DRIVE_RELAY_ADDRESS);
-            beltDrive = new CANJaguar(BELD_DRIVE_CAN_ADDRESS);
             rollerDrive = new Relay(ROLLER_DRIVE_RELAY_ADDRESS);
-        } catch (CANTimeoutException ex) {
+            //shootDrive = new CANJaguar(SHOOT_MOTOR_CAN_ADDRESS,CANJaguar.ControlMode.kCurrent);
+            //beltDrive = new CANJaguar(BELD_DRIVE_CAN_ADDRESS,CANJaguar.ControlMode.kCurrent);
+            shootDrive = new CANJaguar(SHOOT_MOTOR_CAN_ADDRESS);
+            beltDrive = new CANJaguar(BELD_DRIVE_CAN_ADDRESS);
+        } catch (Exception ex) {
             ex.printStackTrace();
         }
 
@@ -149,77 +168,98 @@ public class StateModel {
         // I'm not totally convinced of this since it depends on catching the
         // switches.  If we miss a switch we're hosed (obviously).
         futureStates = new FutureStates[8];
-        futureStates[0] = new StateModel.FutureStates(1, 7, -1, true, false, false);
-        futureStates[1] = new StateModel.FutureStates(0, 4, 1, true, false, false);
-        futureStates[2] = new StateModel.FutureStates(7, 4, 3, true, true, true);
-        futureStates[3] = new StateModel.FutureStates(6, 2, 4, true, false, false);
-        futureStates[4] = new StateModel.FutureStates(2, 7, -1, true, true, false);
-        futureStates[5] = new StateModel.FutureStates(5, 6, 7, false, true, false);
-        futureStates[6] = new StateModel.FutureStates(6, 5, -1, false, true, true);
-        futureStates[7] = new StateModel.FutureStates(7, 5, 6, false, false, false);
-    }
+        futureStates[0] = new StateModel.FutureStates(4, -1, -1, true, false, false);
+        futureStates[1] = new StateModel.FutureStates(0, 5, -1, true, false, false);
+        futureStates[2] = new StateModel.FutureStates(1, 6, -1, true, true, true);
+        futureStates[3] = new StateModel.FutureStates(7, 2, -1, true, false, false);
+        futureStates[4] = new StateModel.FutureStates(2, 6, -1, true, true, false);
+        futureStates[5] = new StateModel.FutureStates(3, 7, -1, true, true, false);
+        futureStates[6] = new StateModel.FutureStates(3, 7, -1, true, true, true);
+        futureStates[7] = new StateModel.FutureStates(6, -1, -1, false, false, false);
+  }
 
     /**
      * Called periodically to check the current status of the state model.
      */
     public int task() {
         int bottom = bottomPhotoEye.get() ? 1 : 0;
-        int middle = middleSwitch.get() ? 1 : 0;
+        int middle = middleSwitch.get() ? 0 : 1;
         int top = topPhotoEye.get() ? 1 : 0;
         int currentState = (bottom << 2) | (middle << 1) | top;
         FutureStates possibleState = futureStates[lastState];
+        System.err.println("StateModel:Task last " +  lastState + " current " + currentState + " future " + possibleState);
+        System.err.println("StateModel:Task sensors " + bottom + " middle " + middle + " top " + top);
+
         boolean validTransition = false;
         for (int counter = 0; counter < 3; counter++) {
             if (possibleState.futureState[counter] == currentState) {
+                System.err.println("StateModel:Task valid transition from " + lastState + " to " + currentState );
                 validTransition = true;
                 break;
             }
         }
-        if (validTransition) {
-            try {
-                // stop the current transition, start the new transition
-                // we were in lastState and we are now in currentstate.
-                lastState = currentState; // assume successful transition even on an exception - there's no better choice
-                FutureStates current = futureStates[currentState];
-                runRoller(current.roller);
-                runBelt(current.roller);
-                runMetering(current.roller);
-            } catch (CANTimeoutException ex) {
-                ex.printStackTrace();
-            }
+        if (validTransition && lastState != currentState) {
+            // stop the current transition, start the new transition
+            // we were in lastState and we are now in currentstate.
+            System.err.println("StateModel:Task transition " + lastState + " new " + currentState);
+            lastState = currentState; // assume successful transition even on an exception - there's no better choice
+        }
+        try {
+            FutureStates current = futureStates[lastState];
+            System.err.println("StateModel:Task actions " + lastState + " roller " + current.roller + " belt " + current.belt + " meter " + current.metering);
+            runRoller(current.roller);
+            runBelt(current.belt);
+            runMetering(current.metering && top != 1);
+        } catch (CANTimeoutException ex) {
+            ex.printStackTrace();
         }
         return 0;
     }
 
     public void runRoller(boolean roller) throws CANTimeoutException {
         if (roller) {
-            rollerDrive.set(Relay.Value.kForward);
+            rollerDrive.set(Relay.Value.kReverse);
         } else {
             rollerDrive.set(Relay.Value.kOff);
         }
     }
 
     public void runBelt(boolean belt) throws CANTimeoutException {
-        if (belt) {
-            beltDrive.setX(0.1);
-        } else {
-            beltDrive.setX(0);
+        if (beltDrive != null) {
+            if (belt) {
+                beltDrive.setX(-0.40);
+            } else {
+                beltDrive.setX(0);
+            }
+        }
+    }
+
+    public void clear(boolean belt) throws CANTimeoutException {
+        if (beltDrive != null) {
+            if (belt) {
+                beltDrive.setX(0.55);
+            } else {
+                beltDrive.setX(0);
+            }
         }
     }
 
     public void runMetering(boolean metering) throws CANTimeoutException {
         if (metering) {
-            meteringDrive.set(Relay.Value.kForward);
+            meteringDrive.set(Relay.Value.kReverse);
         } else {
             meteringDrive.set(Relay.Value.kOff);
         }
     }
 
     public void shoot(boolean shoot) throws CANTimeoutException {
-        if (shoot) {
-            shootDrive.setX(0.1);
-        } else {
-            shootDrive.setX(0);
+        if (shootDrive != null) {
+            if (shoot) {
+               meteringDrive.set(Relay.Value.kReverse);
+               shootDrive.setX(-0.25);
+            } else {
+                shootDrive.setX(0);
+            }
         }
     }
 
@@ -232,6 +272,7 @@ public class StateModel {
             runRoller(false);
             runBelt(false);
             runMetering(false);
+            meteringDrive.set(Relay.Value.kOff);
         } catch (CANTimeoutException ex) {
             ex.printStackTrace();
         }
