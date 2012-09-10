@@ -26,6 +26,7 @@ import edu.wpi.first.wpilibj.can.CANTimeoutException;
  */
 public class StateModel {
 
+    public static int debugLevel = 0;
     public static final int SHOOT_MOTOR_CAN_ADDRESS = 7;
     public static final int METERING_DRIVE_RELAY_ADDRESS = 1;
     public static final int BELD_DRIVE_CAN_ADDRESS = 3;
@@ -176,7 +177,7 @@ public class StateModel {
         futureStates[5] = new StateModel.FutureStates(3, 7, -1, true, true, false);
         futureStates[6] = new StateModel.FutureStates(3, 7, -1, true, true, true);
         futureStates[7] = new StateModel.FutureStates(6, -1, -1, false, false, false);
-  }
+    }
 
     /**
      * Called periodically to check the current status of the state model.
@@ -187,13 +188,17 @@ public class StateModel {
         int top = topPhotoEye.get() ? 1 : 0;
         int currentState = (bottom << 2) | (middle << 1) | top;
         FutureStates possibleState = futureStates[lastState];
-        System.err.println("StateModel:Task last " +  lastState + " current " + currentState + " future " + possibleState);
-        System.err.println("StateModel:Task sensors " + bottom + " middle " + middle + " top " + top);
+        if (debugLevel > 10) {
+            System.err.println("StateModel:Task last " + lastState + " current " + currentState + " future " + possibleState);
+            System.err.println("StateModel:Task sensors " + bottom + " middle " + middle + " top " + top);
+        }
 
         boolean validTransition = false;
         for (int counter = 0; counter < 3; counter++) {
             if (possibleState.futureState[counter] == currentState) {
-                System.err.println("StateModel:Task valid transition from " + lastState + " to " + currentState );
+                if (debugLevel > 10) {
+                    System.err.println("StateModel:Task valid transition from " + lastState + " to " + currentState);
+                }
                 validTransition = true;
                 break;
             }
@@ -201,12 +206,16 @@ public class StateModel {
         if (validTransition && lastState != currentState) {
             // stop the current transition, start the new transition
             // we were in lastState and we are now in currentstate.
-            System.err.println("StateModel:Task transition " + lastState + " new " + currentState);
+            if (debugLevel > 10) {
+                System.err.println("StateModel:Task transition " + lastState + " new " + currentState);
+            }
             lastState = currentState; // assume successful transition even on an exception - there's no better choice
         }
         try {
             FutureStates current = futureStates[lastState];
-            System.err.println("StateModel:Task actions " + lastState + " roller " + current.roller + " belt " + current.belt + " meter " + current.metering);
+            if (debugLevel > 10) {
+                System.err.println("StateModel:Task actions " + lastState + " roller " + current.roller + " belt " + current.belt + " meter " + current.metering);
+            }
             runRoller(current.roller);
             runBelt(current.belt);
             runMetering(current.metering && top != 1);
@@ -217,7 +226,7 @@ public class StateModel {
     }
 
     public void runRoller(boolean roller) throws CANTimeoutException {
-        if (roller) {
+        if (roller && Oppie.robotInstance.manipulatorStick.getRawButton(2)) {
             rollerDrive.set(Relay.Value.kReverse);
         } else {
             rollerDrive.set(Relay.Value.kOff);
@@ -255,8 +264,8 @@ public class StateModel {
     public void shoot(boolean shoot) throws CANTimeoutException {
         if (shootDrive != null) {
             if (shoot) {
-               meteringDrive.set(Relay.Value.kReverse);
-               shootDrive.setX(-0.25);
+                meteringDrive.set(Relay.Value.kReverse);
+                shootDrive.setX(-0.25);
             } else {
                 shootDrive.setX(0);
             }

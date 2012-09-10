@@ -6,10 +6,7 @@
 /*----------------------------------------------------------------------------*/
 package com.team4153.oppie2012;
 
-import edu.wpi.first.wpilibj.Joystick;
-import edu.wpi.first.wpilibj.RobotDrive;
-import edu.wpi.first.wpilibj.SimpleRobot;
-import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.*;
 import edu.wpi.first.wpilibj.can.CANTimeoutException;
 
 /**
@@ -28,10 +25,12 @@ public class Oppie extends SimpleRobot {
     public static final int LEFT_JOYSTICK = 1;
     public static final int RIGHT_JOYSTICK = 2;
     public static final int MANIPULATOR_JOYSTICK = 3;
-    RobotDrive drive = new RobotDrive(LEFT_FRONT_MOTOR, LEFT_REAR_MOTOR, RIGHT_FRONT_MOTOR, RIGHT_REAR_MOTOR);
     Joystick leftStick = new Joystick(LEFT_JOYSTICK);
     Joystick rightStick = new Joystick(RIGHT_JOYSTICK);
     Joystick manipulatorStick = new Joystick(MANIPULATOR_JOYSTICK);
+    RobotDrive drive;
+    
+    public static Oppie robotInstance;
 
     /**
      * Create the state model for the shooter.
@@ -39,7 +38,14 @@ public class Oppie extends SimpleRobot {
     protected void robotInit() {
         super.robotInit();
         // oops, wait, it's a singleton, don't need to do this.
-    }
+        try {
+            drive = new RobotDrive(new CANJaguar(LEFT_FRONT_MOTOR), new CANJaguar(LEFT_REAR_MOTOR), new CANJaguar(RIGHT_FRONT_MOTOR), new CANJaguar(RIGHT_REAR_MOTOR));
+            drive.setSafetyEnabled(false);
+       } catch (Exception any) {
+            any.printStackTrace();
+        }
+        robotInstance = this;
+     }
 
     /**
      * This function is called once each time the robot enters autonomous mode.
@@ -51,15 +57,27 @@ public class Oppie extends SimpleRobot {
      * This function is called once each time the robot enters operator control.
      */
     public void operatorControl() {
-        while (isOperatorControl() && isEnabled()) {
+        System.err.println ("Entering Teleop");
+                    StateModel.getStateModel().reset();
+      while (isOperatorControl() && isEnabled()) {
             try {
-                //drive.tankDrive(leftStick, rightStick);  // no driving yet.
-                StateModel.getStateModel().runRoller(manipulatorStick.getRawButton(3));
-                StateModel.getStateModel().runBelt(manipulatorStick.getRawButton(4));
-                StateModel.getStateModel().runMetering(manipulatorStick.getRawButton(5));
+                drive.tankDrive(rightStick, leftStick);  
+                //System.err.println("Teleop");
+                //StateModel.getStateModel().runRoller(manipulatorStick.getRawButton(3));
+                //StateModel.getStateModel().runBelt(manipulatorStick.getRawButton(4));
+                //StateModel.getStateModel().runMetering(manipulatorStick.getRawButton(5));
+                StateModel.getStateModel().task();
                 StateModel.getStateModel().shoot(manipulatorStick.getRawButton(1));
+                //StateModel.getStateModel().runRoller(manipulatorStick.getRawButton(2));
+                if ( manipulatorStick.getRawButton(8) ) {
+                  StateModel.getStateModel().reset();
+                }
+                //Gyro g = new Gyro();
+                //System.err.println("Teleop - running BMS");
+                BMS.getBMS().task();
+                ShooterHead.getShooterHead().task();
                 Timer.delay(0.005);
-            } catch (CANTimeoutException ex) {
+            } catch (Exception ex) {
                 ex.printStackTrace();
             }
         }
