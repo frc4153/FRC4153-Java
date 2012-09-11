@@ -236,7 +236,7 @@ public class StateModel {
     public void runBelt(boolean belt) throws CANTimeoutException {
         if (beltDrive != null) {
             if (belt) {
-                beltDrive.setX(-0.40);
+                beltDrive.setX(-0.5);
             } else {
                 beltDrive.setX(0);
             }
