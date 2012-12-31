@@ -1,3 +1,6 @@
 /Oppie2012/build/
 *.class
 /Oppie2012/j2meclasses/
+*.jar
+*.war
+*.ear
